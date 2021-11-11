@@ -7,6 +7,8 @@ from PyQt5.QtCore import *
 from PIL import ImageQt
 import cv2
 from collections import deque
+import numpy as np
+import itertools
 
 class displayLabel(QLabel):
     def customInit(self):        
@@ -14,6 +16,7 @@ class displayLabel(QLabel):
         self.setStyleSheet('background-color: rgb(255, 255, 255);')
         self.setScaledContents(True)
         self.selectedPoint = deque([])
+        self.parent().btn_startTransform.setEnabled(False)
 
     def setImage(self, filePath):
         self.customInit()
@@ -34,7 +37,7 @@ class displayLabel(QLabel):
             if len(prePoint) > 0:
                 painter.drawLine(prePoint[0], prePoint[1], x, y)
             painter.drawPoint(x, y) 
-            print('draw', x, y)
+            
             prePoint = [x, y]
 
         if len(self.selectedPoint) > 2:
@@ -49,6 +52,11 @@ class displayLabel(QLabel):
 
         self.selectedPoint.append([pos.x(), pos.y()])
 
+        if len(self.selectedPoint) > 2:
+            self.parent().btn_startTransform.setEnabled(True)
+        else:
+            self.parent().btn_startTransform.setEnabled(False)
+
         if len(self.selectedPoint) > 3:
             self.selectedPoint.popleft()
 
@@ -62,15 +70,7 @@ class MainWindow(QWidget):
 
         # param
         self.srcTri = [] # [左內眼角], [右內眼角], [鼻尖]
-        self.dstTri = [[65, 90], [95, 90], [80, 120]]
-        self.selectedPoint = []
-        self.selectImage = False
-        self.image = QPixmap(600, 400)
-
-        # Display
-        self.displayLabel = displayLabel(self)    
-        self.displayLabel.customInit()       
-        self.displayLabel.setGeometry(100, 200, 600, 400)        
+        self.dstTri = [[65, 90], [95, 90], [80, 120]]                
         
         # Text
         self.label = QLabel(self)        
@@ -86,7 +86,20 @@ class MainWindow(QWidget):
         self.btn_selectImage.setGeometry(100, 100, 600, 50)        
         self.btn_selectImage.clicked.connect(self.open_image)
 
+        self.btn_startTransform = QPushButton(self)
+        self.btn_startTransform.setText('Transform')
+        self.btn_startTransform.setFont(QFont('Arial', 20))
+        self.btn_startTransform.setGeometry(100, 650, 600, 50)
+        self.btn_startTransform.setEnabled(False)
+        self.btn_startTransform.clicked.connect(self.run_AffineTransform)
 
+        # Display
+        self.displayLabel = displayLabel(self)    
+        self.displayLabel.customInit()       
+        self.displayLabel.setGeometry(100, 200, 600, 400)
+
+        self.disployLabel_processed = QLabel(self)
+        self.disployLabel_processed.setGeometry(1000, 200, 320, 380)
     
     def open_image(self):
         self.fileName = QFileDialog.getOpenFileName(self, \
@@ -95,12 +108,53 @@ class MainWindow(QWidget):
             return
 
         self.displayLabel.setImage(QPixmap(self.fileName))
-        self.image = QPixmap(self.fileName)
-        self.selectImage = True
 
         self.label.setText('請依序點選 [左內眼角] -> [右內眼角] -> [鼻尖]')
 
-       
+    def run_AffineTransform(self):
+        self.srcTri = self.displayLabel.selectedPoint
+        src_tri = np.array(self.srcTri, dtype=np.float32)
+        dst_tri = np.array(self.dstTri, dtype=np.float32)
+        
+        srcImg = cv2.imread(self.fileName)
+        
+        src_tri[:, 0] = src_tri[:, 0] / 600 * srcImg.shape[1]
+        src_tri[:, 1] = src_tri[:, 1] / 400 * srcImg.shape[0]
+
+
+        wrap_mat = cv2.getAffineTransform(src_tri, dst_tri)
+
+        dst = apply_AffineTransform(srcImg, wrap_mat, (160, 190))
+
+        dst = cv2.resize(dst, (320, 380))
+        dst = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
+
+        height, width, channel = dst.shape
+        bytesPerLine = 3 * width
+        qImg = QImage(dst.data, width, height, bytesPerLine, QImage.Format_RGB888)
+        self.disployLabel_processed.setPixmap(QPixmap.fromImage(qImg))
+
+def apply_AffineTransform(src, matrix, dst_size):
+    dst = np.zeros([dst_size[0], dst_size[1], 3], dtype=np.uint8)
+    mat = np.concatenate((matrix, [[0, 0, 1]]), axis=0)
+    
+   
+    for x, y in itertools.product(range(src.shape[1]), range(src.shape[0])):
+        raw = np.array([[x], [y], [1]])
+        new = mat @ raw
+
+        new = new.astype(np.int32)
+
+        if (new[0] < 0) or (new[0] >= dst.shape[1]):
+            continue
+        if (new[1] < 0) or (new[1] >= dst.shape[0]):
+            continue
+        
+        dst[new[1], new[0], :] = src[y ,x]
+
+    return dst
+
+    pass
 
 if __name__ == '__main__':
     app = QApplication([])
