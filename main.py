@@ -70,7 +70,9 @@ class MainWindow(QWidget):
 
         # param
         self.srcTri = [] # [左內眼角], [右內眼角], [鼻尖]
-        self.dstTri = [[65, 90], [95, 90], [80, 120]]                
+        # self.dstTri = [[130, 180], [190, 180], [160, 240]]   
+        self.dstTri = [[65, 90], [95, 90], [80, 120]]       
+        self.processedImage = None          
         
         # Text
         self.label = QLabel(self)        
@@ -93,13 +95,20 @@ class MainWindow(QWidget):
         self.btn_startTransform.setEnabled(False)
         self.btn_startTransform.clicked.connect(self.run_AffineTransform)
 
+        self.btn_saveImage = QPushButton(self)
+        self.btn_saveImage.setText('Save')
+        self.btn_saveImage.setFont(QFont('Arial', 20))
+        self.btn_saveImage.setGeometry(800, 650, 600, 50)
+        self.btn_saveImage.setEnabled(False)
+        self.btn_saveImage.clicked.connect(self.save_image)
+
         # Display
         self.displayLabel = displayLabel(self)    
         self.displayLabel.customInit()       
         self.displayLabel.setGeometry(100, 200, 600, 400)
 
         self.disployLabel_processed = QLabel(self)
-        self.disployLabel_processed.setGeometry(1000, 200, 320, 380)
+        self.disployLabel_processed.setGeometry(800, 200, 320, 380)
     
     def open_image(self):
         self.fileName = QFileDialog.getOpenFileName(self, \
@@ -124,15 +133,24 @@ class MainWindow(QWidget):
 
         wrap_mat = cv2.getAffineTransform(src_tri, dst_tri)
 
-        dst = apply_AffineTransform(srcImg, wrap_mat, (160, 190))
+        dst = apply_AffineTransform(srcImg, wrap_mat, (190, 160))
 
         dst = cv2.resize(dst, (320, 380))
+        self.processedImage = dst
+
         dst = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
 
         height, width, channel = dst.shape
         bytesPerLine = 3 * width
         qImg = QImage(dst.data, width, height, bytesPerLine, QImage.Format_RGB888)
         self.disployLabel_processed.setPixmap(QPixmap.fromImage(qImg))
+        
+        self.btn_saveImage.setEnabled(True)
+    
+    def save_image(self):
+        saveFileName = os.path.splitext(self.fileName.split('/')[-1])[0]
+        saveImg = cv2.resize(self.processedImage, (160, 190))
+        cv2.imwrite(f'./results/{saveFileName}.jpg', saveImg)
 
 def apply_AffineTransform(src, matrix, dst_size):
     dst = np.zeros([dst_size[0], dst_size[1], 3], dtype=np.uint8)
@@ -152,9 +170,10 @@ def apply_AffineTransform(src, matrix, dst_size):
         
         dst[new[1], new[0], :] = src[y ,x]
 
+
     return dst
 
-    pass
+    
 
 if __name__ == '__main__':
     app = QApplication([])
