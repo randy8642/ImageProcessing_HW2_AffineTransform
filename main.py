@@ -6,8 +6,53 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PIL import ImageQt
 import cv2
+from collections import deque
 
+class displayLabel(QLabel):
+    def customInit(self):        
+        self.haveImage = False
+        self.setStyleSheet('background-color: rgb(255, 255, 255);')
+        self.setScaledContents(True)
+        self.selectedPoint = deque([])
 
+    def setImage(self, filePath):
+        self.customInit()
+        self.image = QPixmap(filePath)
+        self.haveImage = True
+
+    def paintEvent(self, event): 
+        if not self.haveImage:
+            return       
+
+        painter = QPainter(self)
+        painter.drawPixmap(self.rect(), self.image)
+
+        #
+        painter.setPen(QPen(Qt.red, 3, Qt.SolidLine))        
+        prePoint = []
+        for x, y in self.selectedPoint: 
+            if len(prePoint) > 0:
+                painter.drawLine(prePoint[0], prePoint[1], x, y)
+            painter.drawPoint(x, y) 
+            print('draw', x, y)
+            prePoint = [x, y]
+
+        if len(self.selectedPoint) > 2:
+            painter.drawLine(self.selectedPoint[-1][0], self.selectedPoint[-1][1], self.selectedPoint[0][0], self.selectedPoint[0][1])
+        # painter.end()
+
+    def mousePressEvent(self, event):
+        if not self.haveImage:
+            return
+
+        pos = event.pos()
+
+        self.selectedPoint.append([pos.x(), pos.y()])
+
+        if len(self.selectedPoint) > 3:
+            self.selectedPoint.popleft()
+
+        self.update()
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -20,76 +65,42 @@ class MainWindow(QWidget):
         self.dstTri = [[65, 90], [95, 90], [80, 120]]
         self.selectedPoint = []
         self.selectImage = False
+        self.image = QPixmap(600, 400)
 
-        # Display               
-        self.displayLabel = QLabel(self)
-        self.displayLabel.setGeometry(100, 200, 600, 400)
-        self.displayLabel.setScaledContents(True)
-        self.displayLabel.setStyleSheet('background-color: rgb(255, 255, 255);')
-        self.displayLabel.mousePressEvent = self.image_click
+        # Display
+        self.displayLabel = displayLabel(self)    
+        self.displayLabel.customInit()       
+        self.displayLabel.setGeometry(100, 200, 600, 400)        
         
         # Text
         self.label = QLabel(self)        
-        self.label.setText("請先選擇圖片")
+        self.label.setText("Select image first")
+        self.label.setGeometry(100, 150, 600, 50)
+        self.label.setAlignment(Qt.AlignCenter) 
+        self.label.setFont(QFont('Arial', 20)) 
 
         # Buttom
-        self.button1 = QPushButton(self)
-        self.button1.setText("選取圖片")  # 建立名字
-        self.button1.setGeometry(100, 100, 600, 50)  # 移動位置
-        # 當 button1 這個物件發出訊號時( 被按了) 到 button1_clicked 這個槽執行
-        self.button1.clicked.connect(self.open_image)
+        self.btn_selectImage = QPushButton(self)
+        self.btn_selectImage.setText("Select Image")
+        self.btn_selectImage.setFont(QFont('Arial', 20)) 
+        self.btn_selectImage.setGeometry(100, 100, 600, 50)        
+        self.btn_selectImage.clicked.connect(self.open_image)
 
-    def button1_clicked(self):
-        print('click')
 
-        pass
-
+    
     def open_image(self):
         self.fileName = QFileDialog.getOpenFileName(self, \
             'Open file', 'c:\\',"Image files (*.jpg *.bmp *.png)")[0]
         if self.fileName == '':
             return
-        self.displayLabel.setPixmap(QPixmap(self.fileName))
+
+        self.displayLabel.setImage(QPixmap(self.fileName))
         self.image = QPixmap(self.fileName)
         self.selectImage = True
 
-        self.label.setText('請點選左內眼角')
-        # self.draw_point()
+        self.label.setText('請依序點選 [左內眼角] -> [右內眼角] -> [鼻尖]')
+
        
-    def image_click(self, event):
-        if not self.selectImage:
-            return
-
-        pos = event.pos()
-
-        print(pos)
-        # print('real pos', pos.x()/600*self.image.shape[1], pos.y()/400*self.image.shape[0])
-
-        self.selectedPoint.append([pos.x(), pos.y()])
-        self.draw_point()
-
-    def draw_point(self):
-        painter = QPainter(self.displayLabel.pixmap())        
-        painter.setPen(QPen(Qt.red, 10, Qt.SolidLine))
-
-        painter.drawLine(10, 10, 300, 200)
-        painter.end()
-
-
-        return
-        painter = QPainter(self.image)
-        painter.setPen(QPen(Qt.red, 3, Qt.SolidLine))
-
-        prePoint = []
-        for x, y in self.selectedPoint: 
-            if len(prePoint) > 0:
-                painter.drawLine(prePoint[0], prePoint[1], x, y)
-            painter.drawPoint(x, y) 
-            print('draw', x, y)
-            prePoint = [x, y]    
-        
-        painter.end()
-        self.update()
 
 if __name__ == '__main__':
     app = QApplication([])
