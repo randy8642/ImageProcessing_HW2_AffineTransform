@@ -153,26 +153,23 @@ class MainWindow(QWidget):
         cv2.imwrite(f'./results/{saveFileName}.jpg', saveImg)
 
 def apply_AffineTransform(src, matrix, dst_size):
-    dst = np.zeros([dst_size[0], dst_size[1], 3], dtype=np.uint8)
     mat = np.concatenate((matrix, [[0, 0, 1]]), axis=0)
-    
-   
-    for x, y in itertools.product(range(src.shape[1]), range(src.shape[0])):
-        raw = np.array([[x], [y], [1]])
-        new = mat @ raw
 
-        new = new.astype(np.int32)
+    targetPoint = [(mat @ np.array([[x], [y], [1]]))[:2, 0] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
+    sourcePoint = [[x, y] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
 
-        if (new[0] < 0) or (new[0] >= dst.shape[1]):
-            continue
-        if (new[1] < 0) or (new[1] >= dst.shape[0]):
-            continue
-        
-        dst[new[1], new[0], :] = src[y ,x]
+    targetPoint = np.array(targetPoint, dtype=np.int32)
+    sourcePoint = np.array(sourcePoint, dtype=np.int32)
 
+    mask = (targetPoint[:, 0] < dst_size[1]) & (targetPoint[:, 1] < dst_size[0]) & \
+        (targetPoint[:, 1] >= 0) & (targetPoint[:, 0] >= 0)
+    targetPoint = targetPoint[mask]
+    sourcePoint = sourcePoint[mask]
+
+    dst = np.zeros([dst_size[0], dst_size[1], 3], dtype=np.uint8)
+    dst[targetPoint[:, 1], targetPoint[:, 0]] = src[sourcePoint[:, 1], sourcePoint[:, 0]]
 
     return dst
-
     
 
 if __name__ == '__main__':
