@@ -8,6 +8,7 @@ opencv-python = "*"
 numpy = "*"
 matplotlib = "*"
 ipykernel = "*"
+PyQt5 = "*"
 
 [dev-packages]
 
