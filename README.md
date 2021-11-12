@@ -26,14 +26,34 @@ NCKU 110-1 影像處理與機器人視覺：基礎與設計 作業2
 ### Affine Transform Matrix Calculation
 #### 程式碼
 ```python
+
 ```
 #### 說明
 
 ### Affine Transform
 #### 程式碼
 ```python
+def apply_AffineTransform(src, matrix, dst_size):
+    mat = np.concatenate((matrix, [[0, 0, 1]]), axis=0)
+
+    targetPoint = [(mat @ np.array([[x], [y], [1]]))[:2, 0] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
+    sourcePoint = [[x, y] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
+
+    targetPoint = np.array(targetPoint, dtype=np.int32)
+    sourcePoint = np.array(sourcePoint, dtype=np.int32)
+
+    mask = (targetPoint[:, 0] < dst_size[1]) & (targetPoint[:, 1] < dst_size[0]) & \
+        (targetPoint[:, 1] >= 0) & (targetPoint[:, 0] >= 0)
+    targetPoint = targetPoint[mask]
+    sourcePoint = sourcePoint[mask]
+
+    dst = np.zeros([dst_size[0], dst_size[1], 3], dtype=np.uint8)
+    dst[targetPoint[:, 1], targetPoint[:, 0]] = src[sourcePoint[:, 1], sourcePoint[:, 0]]
+
+    return dst
 ```
 #### 說明
+將原圖片的每個座標點和轉換矩陣內積後得到新的座標點，並記錄原始做便和新座標的轉換位置，再將範圍內的像素複製到新的圖片中。
 
 ## 處理步驟說明
 ### Step 1 : 選取人物特徵位置
