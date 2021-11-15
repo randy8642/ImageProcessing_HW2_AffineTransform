@@ -1,3 +1,6 @@
+'''
+https://stackoverflow.com/questions/22954239/given-three-points-compute-affine-transformation
+'''
 import sys
 import os
 import PyQt5
@@ -151,6 +154,13 @@ class MainWindow(QWidget):
         saveFileName = os.path.splitext(self.fileName.split('/')[-1])[0]
         saveImg = cv2.resize(self.processedImage, (160, 190))
         cv2.imwrite(f'./results/{saveFileName}.jpg', saveImg)
+
+def cal_AffineTransformMatrix(srcPoints: np.ndarray, dstPoints:np.ndarray):
+
+
+
+
+    return 0
 
 def apply_AffineTransform(src, matrix, dst_size):
     sourcePoint = np.array([[x, y, 1] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))])
