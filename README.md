@@ -23,27 +23,16 @@ NCKU 110-1 影像處理與機器人視覺：基礎與設計 作業2
 `pipenv install`
 
 ## 功能實現
-### Affine Transform Matrix Calculation
-#### 程式碼
-```python
-
-```
-#### 說明
 
 ### Affine Transform
 #### 程式碼
 ```python
 def apply_AffineTransform(src, matrix, dst_size):
-    mat = np.concatenate((matrix, [[0, 0, 1]]), axis=0)
+    sourcePoint = np.array([[x, y, 1] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))])
+    targetPoint = (sourcePoint @ matrix.T).astype(np.int32)
+    
 
-    targetPoint = [(mat @ np.array([[x], [y], [1]]))[:2, 0] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
-    sourcePoint = [[x, y] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
-
-    targetPoint = np.array(targetPoint, dtype=np.int32)
-    sourcePoint = np.array(sourcePoint, dtype=np.int32)
-
-    mask = (targetPoint[:, 0] < dst_size[1]) & (targetPoint[:, 1] < dst_size[0]) & \
-        (targetPoint[:, 1] >= 0) & (targetPoint[:, 0] >= 0)
+    mask = (targetPoint[:, 0] < dst_size[1]) & (targetPoint[:, 1] < dst_size[0]) & (targetPoint[:, 1] >= 0) & (targetPoint[:, 0] >= 0)
     targetPoint = targetPoint[mask]
     sourcePoint = sourcePoint[mask]
 
@@ -53,14 +42,18 @@ def apply_AffineTransform(src, matrix, dst_size):
     return dst
 ```
 #### 說明
-將原圖片的每個座標點和轉換矩陣內積後得到新的座標點，並記錄原始做便和新座標的轉換位置，再將範圍內的像素複製到新的圖片中。
+將原圖片的每個座標點和轉換矩陣內積後得到新的座標點，並記錄原始做便和新座標的轉換位置，再將範圍內的像素複製到新的圖片中。  
+其中，`src`為影像矩陣，`matrix`為透過 **OpenCV 中的 getAffineTransform 函數**所求得的轉換矩陣，`dst_size`為新影像的大小
 
 ## 處理步驟說明
 ### Step 1 : 選取人物特徵位置
-選定人臉的左右內眼角以及鼻尖作為固定點
+選定人臉的左右內眼角以及鼻尖作為固定點，如圖  
+![人臉定位點](./img/人臉三角形.jpg)
 
 ### Step 2 : 計算轉換矩陣
-
+使用**OpenCV**的函數計算轉換矩陣，使用函數如下  
+`wrap_mat = cv2.getAffineTransform(srcTriangle, dstTriangle)`  
+該轉換能夠保留圖片中共線的點的特徵，使他們在經過轉換之後依舊維持共線關係。
 
 ### Step 3 : 轉換圖片
 計算原始圖片各位置轉換後的新座標，並將像素點重新排列為新圖片

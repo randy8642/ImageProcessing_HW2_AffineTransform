@@ -153,13 +153,9 @@ class MainWindow(QWidget):
         cv2.imwrite(f'./results/{saveFileName}.jpg', saveImg)
 
 def apply_AffineTransform(src, matrix, dst_size):
-    mat = np.concatenate((matrix, [[0, 0, 1]]), axis=0)
-
-    targetPoint = [(mat @ np.array([[x], [y], [1]]))[:2, 0] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
-    sourcePoint = [[x, y] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))]
-
-    targetPoint = np.array(targetPoint, dtype=np.int32)
-    sourcePoint = np.array(sourcePoint, dtype=np.int32)
+    sourcePoint = np.array([[x, y, 1] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))])
+    targetPoint = (sourcePoint @ matrix.T).astype(np.int32)
+    
 
     mask = (targetPoint[:, 0] < dst_size[1]) & (targetPoint[:, 1] < dst_size[0]) & \
         (targetPoint[:, 1] >= 0) & (targetPoint[:, 0] >= 0)
