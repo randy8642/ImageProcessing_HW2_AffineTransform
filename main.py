@@ -133,8 +133,8 @@ class MainWindow(QWidget):
         src_tri[:, 0] = src_tri[:, 0] / 600 * srcImg.shape[1]
         src_tri[:, 1] = src_tri[:, 1] / 400 * srcImg.shape[0]
 
-
-        wrap_mat = cv2.getAffineTransform(src_tri, dst_tri)
+        # wrap_mat = cv2.getAffineTransform(src_tri, dst_tri)
+        wrap_mat = get_AfflineMatrix(src_tri, dst_tri)
 
         dst = apply_AffineTransform(srcImg, wrap_mat, (190, 160))
 
@@ -155,20 +155,28 @@ class MainWindow(QWidget):
         saveImg = cv2.resize(self.processedImage, (160, 190))
         cv2.imwrite(f'./results/{saveFileName}.jpg', saveImg)
 
-def cal_AffineTransformMatrix(srcPoints: np.ndarray, dstPoints:np.ndarray):
 
+def get_AfflineMatrix(srcTri, dstTri):    
+    assert (len(srcTri.shape) == 2) & (srcTri.shape[-1] == 2)
+    assert (len(dstTri.shape) == 2) & (dstTri.shape[-1] == 2)
 
+    srcTri = np.concatenate((srcTri.T, np.ones([1, 3])), axis=0)
+    dstTri = np.concatenate((dstTri.T, np.ones([1, 3])), axis=0)
 
+    # calculate transform matrix
+    H = dstTri @ srcTri.T @ np.linalg.inv(srcTri @ srcTri.T)
 
-    return 0
+    # set small number to zero
+    H[np.abs(H) < 1e-5] = 0
+
+    return H
 
 def apply_AffineTransform(src, matrix, dst_size):
     sourcePoint = np.array([[x, y, 1] for x, y in itertools.product(range(src.shape[1]), range(src.shape[0]))])
     targetPoint = (sourcePoint @ matrix.T).astype(np.int32)
     
 
-    mask = (targetPoint[:, 0] < dst_size[1]) & (targetPoint[:, 1] < dst_size[0]) & \
-        (targetPoint[:, 1] >= 0) & (targetPoint[:, 0] >= 0)
+    mask = (targetPoint[:, 0] < dst_size[1]) & (targetPoint[:, 1] < dst_size[0]) & (targetPoint[:, 1] >= 0) & (targetPoint[:, 0] >= 0)
     targetPoint = targetPoint[mask]
     sourcePoint = sourcePoint[mask]
 
