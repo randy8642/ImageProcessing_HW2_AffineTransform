@@ -137,9 +137,9 @@ class MainWindow(QWidget):
         wrap_mat = get_AfflineMatrix(src_tri, dst_tri)
 
         dst = apply_AffineTransform(srcImg, wrap_mat, (190, 160))
-
-        dst = cv2.resize(dst, (320, 380))
         self.processedImage = dst
+
+        dst = cv2.resize(dst, (320, 380))        
 
         dst = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
 
@@ -151,9 +151,8 @@ class MainWindow(QWidget):
         self.btn_saveImage.setEnabled(True)
     
     def save_image(self):
-        saveFileName = os.path.splitext(self.fileName.split('/')[-1])[0]
-        saveImg = cv2.resize(self.processedImage, (160, 190))
-        cv2.imwrite(f'./results/{saveFileName}.jpg', saveImg)
+        saveFileName = os.path.splitext(self.fileName.split('/')[-1])[0]        
+        cv2.imwrite(f'./results/{saveFileName}.jpg', self.processedImage)
 
 
 def get_AfflineMatrix(srcTri, dstTri):    
